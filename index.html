@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>FMC-AM 6F · HeadRush</title>
+  <style>
+    /* ==================== VISUAL HEADRUSH (INTACTO) ==================== */
+    :root {
+      --bg: #0a1628;
+      --bg-panel: #112240;
+      --text: #e6f1ff;
+      --text-dim: #8892b0;
+      --accent: #64ffda;
+      --accent-dim: #4db8a3;
+      --warning: #ffcc66;
+      --error: #ff6b6b;
+      --success: #51cf66;
+      --fs-off: #2d3748;
+      --fs-on: #4a5568;
+      --fs-active: #64ffda;
+      --fs-capture: #ff6b6b;
+      --led-off: #1a202c;
+      --led-on: #64ffda;
+      --display-bg: #0d1b36;
+      --display-border: #2d3748;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1rem;
+      line-height: 1.4;
+      overscroll-behavior: none;
+    }
+
+    /* Cabeçalho EXATO como no arquivo original */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: var(--bg-panel);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--display-border);
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+    .header-title { font-weight: 600; color: var(--accent); white-space: nowrap; }
+    .header-status { 
+      display: flex; 
+      gap: 0.5rem; 
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      background: var(--fs-off);
+      white-space: nowrap;
+    }
+    .status-badge.ok { background: var(--success); color: #000; }
+    .status-badge.warn { background: var(--warning); color: #000; }
+    .status-badge.err { background: var(--error); }
+
+    /* ==================== DISPLAY ST7789 EMULADO ==================== */
+    .display-container {
+      display: flex;
+      justify-content: center;
+      margin: 1rem 0;
+      touch-action: manipulation;
+    }
+    #display {
+      width: 240px;
+      height: 320px;
+      background: var(--display-bg);
+      border: 2px solid var(--display-border);
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+      image-rendering: pixelated;
+      font-family: monospace;
+      touch-action: none;
+    }
+    .display-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* ==================== FOOTSWITCHES ==================== */
+    .footswitches {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+      touch-action: manipulation;
+    }
+    .fs-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 3px solid var(--fs-off);
+      background: var(--fs-off);
+      color: var(--text);
+      font-weight: 700;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      touch-action: manipulation;
+    }
+    .fs-btn:active, .fs-btn.active {
+      border-color: var(--fs-active);
+      background: var(--fs-active);
+      color: #000;
+      transform: scale(0.95);
+    }
+    .fs-btn.hold {
+      animation: pulse 0.3s infinite;
+    }
+    .fs-btn.capture-mode {
+      border-color: var(--fs-capture);
+      background: var(--fs-capture);
+      animation: capture-pulse 0.5s infinite;
+    }
+    .fs-key-label {
+      position: absolute;
+      bottom: -18px;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+    .fs-btn.capture-mode .fs-key-label {
+      color: var(--fs-capture);
+      font-weight: bold;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(100, 255, 218, 0.4); }
+      50% { box-shadow: 0 0 0 10px rgba(100, 255, 218, 0); }
+    }
+    @keyframes capture-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.6); }
+      50% { box-shadow: 0 0 0 12px rgba(255, 107, 107, 0); }
+    }
+
+    /* ==================== LEDs ==================== */
+    .leds {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .led {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--led-off);
+      border: 2px solid var(--display-border);
+      transition: background 0.1s;
+    }
+    .led.on {
+      background: var(--led-on);
+      box-shadow: 0 0 10px var(--led-on);
+    }
+
+    /* ==================== CONTROLES ==================== */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+    .ctrl-btn {
+      padding: 0.5rem 1rem;
+      background: var(--bg-panel);
+      border: 1px solid var(--display-border);
+      border-radius: 4px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .ctrl-btn:hover { border-color: var(--accent); }
+    .ctrl-btn:active { background: var(--accent-dim); color: #000; }
+    .ctrl-btn.danger { border-color: var(--error); color: var(--error); }
+    .ctrl-btn.danger:active { background: var(--error); color: #fff; }
+
+    /* ==================== MONITOR DE DEBUG ==================== */
+    .monitor {
+      max-width: 600px;
+      margin: 1rem auto;
+      background: #000;
+      border: 1px solid var(--display-border);
+      border-radius: 4px;
+      padding: 0.5rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .monitor.active { display: block; }
+    .mon-line { padding: 2px 0; }
+    .mon-info { color: #fff; }
+    .mon-warn { color: var(--warning); }
+    .mon-error { color: var(--error); }
+    .mon-midi { color: var(--accent); }
+    .mon-zoom { color: var(--success); }
+
+    /* ==================== INFO PANEL ==================== */
+    .info-panel {
+      max-width: 600px;
+      margin: 1rem auto;
+      background: var(--bg-panel);
+      border: 1px solid var(--display-border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+    .info-panel h3 { 
+      color: var(--accent); 
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--display-border);
+      padding-bottom: 0.25rem;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .info-item { 
+      display: flex; 
+      justify-content: space-between;
+      padding: 2px 0;
+    }
+    .info-label { color: var(--text-dim); }
+    .info-value { font-weight: 600; }
+    
+    /* Key mapping hint */
+    .key-hint {
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-top: 0.5rem;
+      text-align: center;
+      padding: 0.25rem;
+      background: rgba(100, 255, 218, 0.1);
+      border-radius: 4px;
+    }
+
+    /* ==================== UTILS ==================== */
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .mt-1 { margin-top: 1rem; }
+    .mb-1 { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <!-- CABEÇALHO EXATO DO ARQUIVO ORIGINAL -->
+  <div class="header">
+    <div class="header-title">FMC-AM 6F · HeadRush</div>
+    <div class="header-status">
+      <span id="patch-display" class="status-badge">FMC·AM</span>
+      <span id="preset-display" class="status-badge">6FA0</span>
+      <span id="effect-display" class="status-badge">CLEAN BOOST</span>
+      <span id="bpm-display" class="status-badge">120BPM</span>
+      <span id="mode-display" class="status-badge">SIM</span>
+      <span id="exec-display" class="status-badge ok">EXECUÇÃO</span>
+      <span id="mem-display" class="status-badge ok">MEM OK</span>
+      <span id="version-display" class="status-badge">v4.1-b20260315-tap-real</span>
+      <span id="cache-indicator">↺ CACHE</span>
+      <span id="load-indicator" class="status-badge warn">◌ carregando…</span>
+      <span id="midi-status" class="status-badge err">MIDI não iniciado</span>
+      <button id="connect-midi" class="ctrl-btn">CONECTAR MIDI</button>
+    </div>
+  </div>
+
+  <!-- DISPLAY EMULADO ST7789 -->
+  <div class="display-container">
+    <div id="display">
+      <canvas id="display-canvas" class="display-canvas" width="240" height="320"></canvas>
+    </div>
+  </div>
+
+  <!-- FOOTSWITCHES (5 unidades) -->
+  <div class="footswitches">
+    <button class="fs-btn" data-idx="0">FS1<span class="fs-key-label" id="key-label-0">1</span></button>
+    <button class="fs-btn" data-idx="1">FS2<span class="fs-key-label" id="key-label-1">2</span></button>
+    <button class="fs-btn" data-idx="2">FS3<span class="fs-key-label" id="key-label-2">3</span></button>
+    <button class="fs-btn" data-idx="3">FS4<span class="fs-key-label" id="key-label-3">4</span></button>
+    <button class="fs-btn" data-idx="4">FS5<span class="fs-key-label" id="key-label-4">5</span></button>
+  </div>
+
+  <!-- LEDs (5 unidades) -->
+  <div class="leds">
+    <div class="led" id="led-0"></div>
+    <div class="led" id="led-1"></div>
+    <div class="led" id="led-2"></div>
+    <div class="led" id="led-3"></div>
+    <div class="led" id="led-4"></div>
+  </div>
+
+  <!-- CONTROLES DE TESTE -->
+  <div class="controls">
+    <button class="ctrl-btn" id="btn-mode">Modo: NORMAL</button>
+    <button class="ctrl-btn" id="btn-tuner">Afinador</button>
+    <button class="ctrl-btn" id="btn-tap">Tap Tempo</button>
+    <button class="ctrl-btn" id="btn-bank">Modo Bank</button>
+    <button class="ctrl-btn" id="btn-keys">Teclas: Padrão</button>
+    <button class="ctrl-btn danger" id="btn-reset">Reset Estado</button>
+    <button class="ctrl-btn" id="btn-monitor">Monitor: OFF</button>
+  </div>
+
+  <!-- MONITOR DE DEBUG -->
+  <div id="monitor" class="monitor"></div>
+
+  <!-- INFO PANEL -->
+  <div class="info-panel">
+    <h3>Estado do Sistema</h3>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Conexão:</span><span id="info-connected" class="info-value">❌</span></div>
+      <div class="info-item"><span class="info-label">Família:</span><span id="info-family" class="info-value">—</span></div>
+      <div class="info-item"><span class="info-label">Patch Atual:</span><span id="info-patch" class="info-value">0</span></div>
+      <div class="info-item"><span class="info-label">Página:</span><span id="info-page" class="info-value">Par</span></div>
+      <div class="info-item"><span class="info-label">BPM:</span><span id="info-bpm" class="info-value">120</span></div>
+      <div class="info-item"><span class="info-label">Tap Count:</span><span id="info-tap-count" class="info-value">0</span></div>
+      <div class="info-item"><span class="info-label">Tuner:</span><span id="info-tuner" class="info-value">Inativo</span></div>
+      <div class="info-item"><span class="info-label">Learn:</span><span id="info-learn" class="info-value">Inativo</span></div>
+    </div>
+    <div class="key-hint" id="key-hint">
+      💡 Segure um FS por 5s para reconfigurar sua tecla • Teclas atuais: <span id="current-keys">1-2-3-4-5</span>
+    </div>
+    <div class="mt-1 text-center" style="font-size:0.8rem;color:var(--text-dim)">
+      • Clique/segure nos footswitches para testar<br>
+      • Combo FS1+FS2 (segure ambos) ativa o monitor<br>
+      • WebMIDI requer HTTPS ou localhost
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT: MÁQUINA DE ESTADOS ==================== -->
+  <script>
+    // ========================================================================
+    // PROTEÇÃO DE CONTEXTO E TOQUE
+    // ========================================================================
+    // Previne menu de contexto (right-click) em desktop
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Previne zoom por double-tap e gestos de navegação no mobile
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+    
+    // Previne seleção de texto
+    document.addEventListener('selectstart', (e) => e.preventDefault());
+
+    // ========================================================================
+    // KEY MAPPING SYSTEM (atalhos configuráveis)
+    // ========================================================================
+    const KeyMapper = (() => {
+      const DEFAULT_KEYS = ['1', '2', '3', '4', '5'];
+      const STORAGE_KEY = 'fmc_am_keymap_v1';
+      
+      let keyMap = { ...DEFAULT_KEYS }; // idx -> key string
+      let reverseMap = {}; // key -> idx
+      let captureMode = { active: false, targetIdx: null, timeout: null };
+      
+      function init() {
+        loadFromStorage();
+        buildReverseMap();
+        updateLabels();
+        setupKeyboardListener();
+      }
+      
+      function loadFromStorage() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            // Merge com defaults para compatibilidade futura
+            keyMap = { ...DEFAULT_KEYS, ...parsed };
+          }
+        } catch (e) {
+          console.warn('Erro ao carregar keymap:', e);
+        }
+      }
+      
+      function saveToStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(keyMap));
+        } catch (e) {
+          console.warn('Erro ao salvar keymap:', e);
+        }
+      }
+      
+      function buildReverseMap() {
+        reverseMap = {};
+        for (const [idx, key] of Object.entries(keyMap)) {
+          if (key) reverseMap[key.toLowerCase()] = parseInt(idx);
+        }
+      }
+      
+      function updateLabels() {
+        for (let i = 0; i < 5; i++) {
+          const el = document.getElementById(`key-label-${i}`);
+          if (el) el.textContent = keyMap[i] || '?';
+        }
+        document.getElementById('current-keys').textContent = 
+          Object.values(keyMap).filter(k => k).join('-') || '—';
+      }
+      
+      function setupKeyboardListener() {
+        document.addEventListener('keydown', (e) => {
+          // Ignora se estiver em input/textarea
+          if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+          
+          // Previne comportamento padrão das teclas mapeadas
+          const key = e.key.toLowerCase();
+          if (reverseMap[key] !== undefined) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!e.repeat) {
+              const idx = reverseMap[key];
+              mon_log('MON_INFO', `Tecla "${key}" → FS${idx+1}`);
+              if (typeof on_fs_short_press === 'function') on_fs_short_press(idx);
+              // Feedback visual rápido
+              const btn = document.querySelector(`.fs-btn[data-idx="${idx}"]`);
+              btn?.classList.add('active');
+              setTimeout(() => btn?.classList.remove('active'), 100);
+            }
+          }
+        });
+      }
+      
+      function startCapture(idx) {
+        if (captureMode.active) return;
+        
+        captureMode.active = true;
+        captureMode.targetIdx = idx;
+        
+        // Feedback visual no FS
+        const btn = document.querySelector(`.fs-btn[data-idx="${idx}"]`);
+        btn?.classList.add('capture-mode');
+        
+        mon_log('MON_INFO', `🎯 Capturando tecla para FS${idx+1}... (pressione uma tecla ou ESC para cancelar)`);
+        document.getElementById('key-hint').innerHTML = 
+          `🎯 <strong>Pressione uma tecla</strong> para FS${idx+1} • ESC para cancelar`;
+        
+        // Listener temporário para captura
+        const onKey = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (e.key === 'Escape') {
+            cancelCapture();
+            return;
+          }
+          
+          // Ignora teclas de controle
+          if (['Control', 'Alt', 'Meta', 'Shift'].includes(e.key)) return;
+          
+          const newKey = e.key.toLowerCase();
+          
+          // Verifica conflito
+          if (reverseMap[newKey] !== undefined && reverseMap[newKey] !== idx) {
+            mon_log('MON_WARN', `Tecla "${newKey}" já mapeada para FS${reverseMap[newKey]+1}`);
+            // Feedback de erro
+            btn?.style.setProperty('border-color', 'var(--error)');
+            setTimeout(() => {
+              if (captureMode.active) btn?.style.removeProperty('border-color');
+            }, 300);
+            return;
+          }
+          
+          // Aplica novo mapeamento
+          keyMap[idx] = newKey;
+          buildReverseMap();
+          saveToStorage();
+          updateLabels();
+          
+          mon_log('MON_INFO', `✅ FS${idx+1} mapeado para "${newKey}"`);
+          document.getElementById('key-hint').innerHTML = 
+            `💡 Segure um FS por 5s para reconfigurar sua tecla • Teclas atuais: <span id="current-keys">${Object.values(keyMap).filter(k => k).join('-')}</span>`;
+          
+          cleanupCapture();
+        };
+        
+        document.addEventListener('keydown', onKey, { once: true });
+        captureMode.cleanup = () => document.removeEventListener('keydown', onKey);
+      }
+      
+      function cancelCapture() {
+        mon_log('MON_INFO', '❌ Captura de tecla cancelada');
+        cleanupCapture();
+      }
+      
+      function cleanupCapture() {
+        if (captureMode.cleanup) captureMode.cleanup();
+        captureMode.active = false;
+        captureMode.targetIdx = null;
+        captureMode.cleanup = null;
+        
+        // Remove feedback visual
+        document.querySelectorAll('.fs-btn').forEach(btn => {
+          btn.classList.remove('capture-mode');
+          btn.style.removeProperty('border-color');
+        });
+        updateLabels();
+      }
+      
+      function isCaptureActive() { return captureMode.active; }
+      function getKeyForIdx(idx) { return keyMap[idx]; }
+      function resetToDefault() {
+        keyMap = { ...DEFAULT_KEYS };
+        buildReverseMap();
+        saveToStorage();
+        updateLabels();
+        mon_log('MON_INFO', '🔄 Teclas resetadas para padrão (1-2-3-4-5)');
+      }
+      
+      return {
+        init, startCapture, cancelCapture, isCaptureActive,
+        getKeyForIdx, resetToDefault, updateLabels
+      };
+    })();
+
+    // ========================================================================
+    // HAL EMULADO (hardware abstraction layer)
+    // ========================================================================
+    const HAL = {
+      timeStart: Date.now(),
+      pins: {
+        fs: [0,1,2,3,4],      // GP0-GP4
+        leds: [6,7,8,9,10],   // GP6-GP10
+        loops: [11,12,13,14,15,16,22,28],
+        display: { spi: 'spi0', sck:18, mosi:19, cs:17, dc:20, rst:21 },
+        usb: { dp: 26, dm: 27 },
+        statusLed: 25,
+        rgb: 23
+      },
+      timing: { debounce: 20, hold: 600, captureHold: 5000 }, // 5s para captura
+      
+      time_ms() { return Date.now() - this.timeStart; },
+      delay_ms(ms) { return new Promise(r => setTimeout(r, ms)); },
+      
+      // Emulação de GPIO
+      gpioState: {},
+      gpio_set(pin, val) { this.gpioState[pin] = val; },
+      gpio_get(pin) { return this.gpioState[pin] || false; }
+    };
+
+    // ========================================================================
+    // DISPLAY DRIVER (ST7789 emulado via Canvas)
+    // ========================================================================
+    const Display = (() => {
+      const canvas = document.getElementById('display-canvas');
+      const ctx = canvas.getContext('2d');
+      const WIDTH = 240, HEIGHT = 320;
+      
+      // Cores RGB565 convertidas para CSS
+      const COL = {
+        BLACK: '#000', WHITE: '#fff', RED: '#f00', GREEN: '#0f0', BLUE: '#00f',
+        YELLOW: '#ff0', CYAN: '#0ff', ORANGE: '#fa0', DARK_GREY: '#333',
+        LIGHT_GREY: '#ccc', DARK_GREEN: '#060', BG: '#0d1b36'
+      };
+      
+      // Fonte embutida 6x8 (subset ASCII)
+      const FONT = {
+        SMALL: 1, MEDIUM: 2, LARGE: 3, XLARGE: 4,
+        data: {} // Simplificado: usaremos texto nativo do canvas
+      };
+      
+      function init() {
+        ctx.fillStyle = COL.BG;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        ctx.textBaseline = 'top';
+        ctx.imageSmoothingEnabled = false;
+      }
+      
+      function fill(color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      }
+      
+      function fillRect(x, y, w, h, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+      }
+      
+      function drawString(x, y, str, fg, bg, scale = 1) {
+        ctx.fillStyle = bg;
+        ctx.fillRect(x, y, ctx.measureText(str).width, 8 * scale);
+        ctx.fillStyle = fg;
+        ctx.font = `${8 * scale}px monospace`;
+        ctx.fillText(str, x, y);
+      }
+      
+      function drawStringCentered(y, str, fg, bg, scale = 1) {
+        const w = ctx.measureText(str).width;
+        drawString((WIDTH - w) / 2, y, str, fg, bg, scale);
+      }
+      
+      function statusBar(left, right, bg = COL.BG) {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, WIDTH, 20);
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '12px monospace';
+        ctx.fillText(left, 4, 4);
+        const rw = ctx.measureText(right).width;
+        ctx.fillText(right, WIDTH - rw - 4, 4);
+        ctx.fillStyle = COL.DARK_GREY;
+        ctx.fillRect(0, 20, WIDTH, 1);
+      }
+      
+      // Telas pré-definidas conforme especificação
+      function drawDisconnected() {
+        fill(COL.BG);
+        statusBar('NO DEVICE', '', COL.RED);
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '48px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('ZOOM', WIDTH/2, 120);
+        ctx.font = '14px monospace';
+        ctx.fillText('Conecte um pedal Zoom via USB', WIDTH/2, 160);
+        ctx.textAlign = 'start';
+      }
+      
+      function drawNormalMode(connected, patch, page, devName = 'G1on') {
+        fill(COL.BG);
+        statusBar(connected ? devName : 'AGUARDANDO...', `P${patch+1}`, COL.SUCCESS);
+        
+        // Banco e preset grandes
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '64px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(String.fromCharCode(65 + Math.floor(patch/10)), WIDTH/2, 100);
+        ctx.font = '48px monospace';
+        ctx.fillText((patch % 10).toString(), WIDTH/2, 160);
+        
+        // Página par/ímpar
+        ctx.font = '16px monospace';
+        ctx.fillStyle = page === 0 ? COL.CYAN : COL.YELLOW;
+        ctx.fillText(page === 0 ? '◀ PAR' : 'ÍMPAR ▶', WIDTH/2, 200);
+        
+        // Patch global
+        ctx.fillStyle = COL.LIGHT_GREY;
+        ctx.fillText(`Global #${patch}`, WIDTH/2, 220);
+        
+        // Dicas footswitches
+        ctx.font = '10px monospace';
+        ctx.fillStyle = COL.DARK_GREY;
+        const tips = ['Banco', 'Preset', 'Bank/Tap', 'Tuner', 'Tap'];
+        tips.forEach((t, i) => {
+          ctx.fillText(t, 20 + i * 42, 300);
+        });
+        ctx.textAlign = 'start';
+      }
+      
+      function drawBankMode(bankPage, preselect, awaiting) {
+        fill(COL.BG);
+        statusBar('SELECIONE BANCO', bankPage === 0 ? 'A-E' : 'F-J', COL.WARNING);
+        
+        const banks = bankPage === 0 ? ['A','B','C','D','E'] : ['F','G','H','I','J'];
+        ctx.font = '32px monospace';
+        ctx.textAlign = 'center';
+        
+        banks.forEach((b, i) => {
+          const x = 30 + i * 38;
+          const isSelected = (preselect !== null && preselect === i);
+          ctx.fillStyle = isSelected ? COL.CYAN : COL.DARK_GREY;
+          ctx.fillRect(x - 15, 80, 30, 40);
+          ctx.fillStyle = COL.WHITE;
+          ctx.fillText(b, x, 90);
+          if (isSelected && awaiting) {
+            ctx.font = '12px monospace';
+            ctx.fillText('►', x, 125);
+            ctx.font = '32px monospace';
+          }
+        });
+        
+        if (awaiting && preselect !== null) {
+          ctx.font = '14px monospace';
+          ctx.fillStyle = COL.CYAN;
+          ctx.fillText(`Banco ${banks[preselect]} - Selecione preset 1-5`, WIDTH/2, 200);
+        }
+        ctx.textAlign = 'start';
+      }
+      
+      function drawTuner(active, note = 'A4', cents = 0) {
+        fill(COL.BG);
+        statusBar('AFINADOR', active ? 'ATIVO' : 'INATIVO', active ? COL.SUCCESS : COL.DARK_GREY);
+        
+        if (!active) {
+          ctx.fillStyle = COL.WHITE;
+          ctx.font = '24px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('Pressione FS4 para ativar', WIDTH/2, 140);
+          ctx.textAlign = 'start';
+          return;
+        }
+        
+        // Nota grande
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '64px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(note, WIDTH/2, 100);
+        
+        // Barra de afinação
+        const barY = 160, barW = 200, barH = 20;
+        ctx.fillStyle = COL.DARK_GREY;
+        ctx.fillRect((WIDTH - barW)/2, barY, barW, barH);
+        
+        // Indicador
+        const indicatorX = (WIDTH - barW)/2 + barW/2 + (cents * barW/200);
+        ctx.fillStyle = Math.abs(cents) < 5 ? COL.SUCCESS : (cents < 0 ? COL.RED : COL.ORANGE);
+        ctx.fillRect(indicatorX - 3, barY - 5, 6, barH + 10);
+        
+        // Cents
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '16px monospace';
+        ctx.fillText(`${cents > 0 ? '+' : ''}${cents} cents`, WIDTH/2, barY + 30);
+        ctx.textAlign = 'start';
+      }
+      
+      function drawTapTempo(bpm, tapCount) {
+        fill(COL.BG);
+        statusBar('TAP TEMPO', `${bpm} BPM`, COL.CYAN);
+        
+        ctx.fillStyle = COL.WHITE;
+        ctx.font = '64px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(bpm.toString(), WIDTH/2, 120);
+        
+        ctx.font = '20px monospace';
+        ctx.fillText(`Taps: ${tapCount}/4`, WIDTH/2, 190);
+        
+        ctx.font = '14px monospace';
+        ctx.fillStyle = COL.DARK_GREY;
+        ctx.fillText('Toque FS5 para registrar taps', WIDTH/2, 230);
+        ctx.textAlign = 'start';
+      }
+      
+      return {
+        init, fill, fillRect, drawString, drawStringCentered, statusBar,
+        drawDisconnected, drawNormalMode, drawBankMode, drawTuner, drawTapTempo,
+        COL, WIDTH, HEIGHT
+      };
+    })();
+
+    // ========================================================================
+    // FOOTSWITCHES (detecção com debounce/hold/combo + key capture)
+    // ========================================================================
+    const Footswitches = (() => {
+      const events = [];
+      const MAX_EVENTS = 16;
+      const state = {};
+      let comboCb = null;
+      let comboTimer = null;
+      let captureTimers = {}; // idx -> timer para modo captura
+      
+      function init() {
+        for (let i = 0; i < 5; i++) {
+          state[i] = { 
+            pressed: false, 
+            lastChange: 0, 
+            debounced: false,
+            held: false 
+          };
+        }
+        // Bind UI buttons
+        document.querySelectorAll('.fs-btn').forEach(btn => {
+          const idx = parseInt(btn.dataset.idx);
+          
+          // Mouse events
+          btn.addEventListener('mousedown', (e) => { e.preventDefault(); handlePress(idx); });
+          btn.addEventListener('mouseup', (e) => { e.preventDefault(); handleRelease(idx); });
+          btn.addEventListener('mouseleave', () => { if (state[idx].pressed) handleRelease(idx); });
+          
+          // Touch events (mobile)
+          btn.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation();
+            handlePress(idx); 
+          }, { passive: false });
+          btn.addEventListener('touchend', (e) => { 
+            e.preventDefault(); 
+            e.stopPropagation();
+            handleRelease(idx); 
+          }, { passive: false });
+          btn.addEventListener('touchcancel', () => { if (state[idx].pressed) handleRelease(idx); });
+        });
+      }
+      
+      function handlePress(idx) {
+        if (state[idx].pressed) return;
+        state[idx].pressed = true;
+        state[idx].lastChange = HAL.time_ms();
+        state[idx].debounced = false;
+        document.querySelector(`.fs-btn[data-idx="${idx}"]`)?.classList.add('active');
+        
+        // Start capture timer (5s hold)
+        if (!KeyMapper.isCaptureActive()) {
+          clearTimeout(captureTimers[idx]);
+          captureTimers[idx] = setTimeout(() => {
+            if (state[idx].pressed && !KeyMapper.isCaptureActive()) {
+              mon_log('MON_INFO', `🎯 Modo captura ativado para FS${idx+1}`);
+              KeyMapper.startCapture(idx);
+            }
+          }, HAL.timing.captureHold);
+        }
+        
+        // Check combo FS1+FS2
+        if (idx === 0 || idx === 1) {
+          clearTimeout(comboTimer);
+          comboTimer = setTimeout(() => {
+            if (state[0].pressed && state[1].pressed && comboCb && !KeyMapper.isCaptureActive()) {
+              comboCb();
+              mon_log('MON_INFO', 'Combo FS1+FS2 detectado');
+            }
+          }, HAL.timing.hold);
+        }
+      }
+      
+      function handleRelease(idx) {
+        // Cancel capture timer
+        clearTimeout(captureTimers[idx]);
+        
+        if (!state[idx].pressed) return;
+        const now = HAL.time_ms();
+        const duration = now - state[idx].lastChange;
+        
+        const btn = document.querySelector(`.fs-btn[data-idx="${idx}"]`);
+        btn?.classList.remove('active', 'hold');
+        
+        // Se estava em modo captura, não emite evento normal
+        if (KeyMapper.isCaptureActive() && KeyMapper.isCaptureActive()) {
+          state[idx].pressed = false;
+          state[idx].held = false;
+          return;
+        }
+        
+        if (duration < HAL.timing.hold) {
+          // Short press
+          enqueueEvent('FS_EVENT_PRESS', idx);
+          if (typeof on_fs_short_press === 'function') on_fs_short_press(idx);
+        } else {
+          // Hold
+          if (!state[idx].held) {
+            enqueueEvent('FS_EVENT_HOLD', idx);
+            if (typeof on_fs_hold === 'function') on_fs_hold(idx);
+            state[idx].held = true;
+          }
+          enqueueEvent('FS_EVENT_RELEASE', idx);
+          if (typeof on_fs_release === 'function') on_fs_release(idx);
+        }
+        
+        state[idx].pressed = false;
+        state[idx].held = false;
+        if ((idx === 0 || idx === 1) && comboTimer) clearTimeout(comboTimer);
+      }
+      
+      function enqueueEvent(event, index) {
+        if (events.length >= MAX_EVENTS) events.shift();
+        events.push({ event, index });
+      }
+      
+      function task() {
+        // Update hold detection
+        const now = HAL.time_ms();
+        for (let i = 0; i < 5; i++) {
+          if (state[i].pressed && !state[i].debounced && (now - state[i].lastChange) >= HAL.timing.debounce) {
+            state[i].debounced = true;
+          }
+          if (state[i].pressed && state[i].debounced && !state[i].held && (now - state[i].lastChange) >= HAL.timing.hold) {
+            state[i].held = true;
+            document.querySelector(`.fs-btn[data-idx="${i}"]`)?.classList.add('hold');
+            enqueueEvent('FS_EVENT_HOLD', i);
+            if (typeof on_fs_hold === 'function') on_fs_hold(i);
+          }
+        }
+      }
+      
+      function getEvent(out) {
+        if (events.length === 0) return false;
+        const e = events.shift();
+        out.event = e.event;
+        out.index = e.index;
+        return true;
+      }
+      
+      function setComboCb(cb) { comboCb = cb; }
+      function isPressed(idx) { return state[idx]?.pressed || false; }
+      
+      // Expor para key mapper
+      function triggerPress(idx) {
+        handlePress(idx);
+        setTimeout(() => handleRelease(idx), 50);
+      }
+      
+      return { 
+        init, task, getEvent, setComboCb, isPressed, 
+        handlePress, handleRelease, triggerPress 
+      };
+    })();
+
+    // ========================================================================
+    // LED CONTROL
+    // ========================================================================
+    const LedControl = (() => {
+      const blinks = {};
+      
+      function init() {
+        for (let i = 0; i < 5; i++) led_set(i, false);
+      }
+      
+      function led_set(index, on) {
+        const el = document.getElementById(`led-${index}`);
+        if (!el) return;
+        el.classList.toggle('on', on);
+        if (blinks[index]) delete blinks[index];
+      }
+      
+      function led_set_all(on) {
+        for (let i = 0; i < 5; i++) led_set(i, on);
+      }
+      
+      function led_set_mask(mask) {
+        for (let i = 0; i < 5; i++) led_set(i, !!(mask & (1 << i)));
+      }
+      
+      function led_blink(index, period_ms) {
+        blinks[index] = { 
+          period: period_ms, 
+          lastToggle: HAL.time_ms(), 
+          state: false 
+        };
+      }
+      
+      function task() {
+        const now = HAL.time_ms();
+        for (const [idx, cfg] of Object.entries(blinks)) {
+          if (now - cfg.lastToggle >= cfg.period / 2) {
+            cfg.state = !cfg.state;
+            cfg.lastToggle = now;
+            led_set(parseInt(idx), cfg.state);
+          }
+        }
+      }
+      
+      return { init, led_set, led_set_all, led_set_mask, led_blink, task };
+    })();
+
+    // ========================================================================
+    // MONITOR DE DEBUG
+    // ========================================================================
+    const Monitor = (() => {
+      const LINES_MAX = 24, LINE_LEN = 36, VISIBLE = 18;
+      const buffer = [];
+      let active = false, dirty = false;
+      
+      const COLORS = {
+        MON_INFO: 'mon-info',
+        MON_WARN: 'mon-warn', 
+        MON_ERROR: 'mon-error',
+        MON_MIDI: 'mon-midi',
+        MON_ZOOM: 'mon-zoom'
+      };
+      
+      function init() {
+        buffer.length = 0;
+        active = false;
+        dirty = false;
+        document.getElementById('monitor').innerHTML = '';
+      }
+      
+      function toggle() {
+        active = !active;
+        document.getElementById('monitor').classList.toggle('active', active);
+        document.getElementById('btn-monitor').textContent = `Monitor: ${active ? 'ON' : 'OFF'}`;
+        if (active) {
+          log('MON_INFO', 'Monitor ativo');
+          dirty = true;
+          render();
+        }
+      }
+      
+      function log(level, fmt, ...args) {
+        const prefix = {
+          MON_INFO: '[I]', MON_WARN: '[W]', MON_ERROR: '[E]',
+          MON_MIDI: '[M]', MON_ZOOM: '[Z]'
+        }[level] || '[?]';
+        
+        let msg = fmt;
+        if (args.length) {
+          msg = fmt.replace(/%[sd]/g, m => args.shift()?.toString() || m);
+        }
+        msg = msg.substring(0, LINE_LEN - 4); // reserve for prefix
+        const line = `${prefix} ${msg}`;
+        
+        buffer.push({ level, text: line });
+        if (buffer.length > LINES_MAX) buffer.shift();
+        dirty = true;
+        if (active) render();
+      }
+      
+      function render() {
+        if (!active || !dirty) return;
+        const container = document.getElementById('monitor');
+        const lines = buffer.slice(-VISIBLE);
+        container.innerHTML = lines.map(l => 
+          `<div class="mon-line ${COLORS[l.level]}">${escapeHtml(l.text)}</div>`
+        ).join('');
+        container.scrollTop = container.scrollHeight;
+        dirty = false;
+      }
+      
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+      
+      return { init, toggle, isActive: () => active, log, task: render };
+    })();
+
+    // ========================================================================
+    // MIDI HOST (WebMIDI API wrapper)
+    // ========================================================================
+    const MidiHost = (() => {
+      let connected = false, midiIdx = null, access = null;
+      let input = null, output = null;
+      
+      async function init() {
+        if (!navigator.requestMIDIAccess) {
+          mon_log('MON_ERROR', 'WebMIDI não suportado neste navegador');
+          updateStatus('WebMIDI não disponível');
+          return;
+        }
+        try {
+          access = await navigator.requestMIDIAccess({ sysex: true });
+          updateStatus('MIDI pronto');
+          mon_log('MON_MIDI', 'Sistema MIDI inicializado');
+          
+          // List devices
+          for (const [id, port] of access.inputs) {
+            mon_log('MON_MIDI', `Input: ${port.name}`);
+          }
+          for (const [id, port] of access.outputs) {
+            mon_log('MON_MIDI', `Output: ${port.name}`);
+          }
+        } catch (err) {
+          mon_log('MON_ERROR', `Erro MIDI: ${err.message}`);
+          updateStatus('Erro MIDI');
+        }
+      }
+      
+      function connectToDevice(deviceName) {
+        if (!access) return false;
+        for (const [id, port] of access.inputs) {
+          if (port.name.toLowerCase().includes(deviceName.toLowerCase())) {
+            input = port;
+            input.onmidimessage = handleMidiMessage;
+            mon_log('MON_MIDI', `Conectado a: ${port.name}`);
+            connected = true;
+            updateStatus('MIDI conectado');
+            if (typeof on_midi_connected === 'function') on_midi_connected();
+            return true;
+          }
+        }
+        return false;
+      }
+      
+      function disconnect() {
+        if (input) {
+          input.onmidimessage = null;
+          input = null;
+        }
+        connected = false;
+        updateStatus('MIDI desconectado');
+        if (typeof on_midi_disconnected === 'function') on_midi_disconnected();
+      }
+      
+      function handleMidiMessage(msg) {
+        const [status, data1, data2] = msg.data;
+        const channel = status & 0x0F;
+        const type = status & 0xF0;
+        
+        if (type === 0xF0) {
+          // SysEx
+          if (typeof on_midi_sysex_received === 'function') {
+            on_midi_sysex_received(msg.data, msg.data.length);
+          }
+        } else if (type === 0xB0 && data1 !== undefined) {
+          // CC
+          if (typeof on_midi_cc_received === 'function') {
+            on_midi_cc_received(channel, data1, data2 || 0);
+          }
+        } else if (type === 0xC0 && data1 !== undefined) {
+          // Program Change
+          if (typeof on_midi_pc_received === 'function') {
+            on_midi_pc_received(channel, data1);
+          }
+        }
+      }
+      
+      function sendRaw(data) {
+        if (!connected || !access) return false;
+        for (const [id, port] of access.outputs) {
+          port.send(data);
+          return true;
+        }
+        return false;
+      }
+      
+      function sendPC(channel, program) {
+        return sendRaw([0xC0 | (channel & 0x0F), program & 0x7F]);
+      }
+      
+      function sendCC(channel, cc, value) {
+        return sendRaw([0xB0 | (channel & 0x0F), cc & 0x7F, value & 0x7F]);
+      }
+      
+      function sendSysex(data) {
+        if (data[0] !== 0xF0 || data[data.length-1] !== 0xF7) return false;
+        return sendRaw(data);
+      }
+      
+      function updateStatus(text) {
+        document.getElementById('midi-status').textContent = text;
+        document.getElementById('midi-status').className = 
+          `status-badge ${text.includes('conectado') ? 'ok' : text.includes('Erro') ? 'err' : 'warn'}`;
+      }
+      
+      return { 
+        init, connectToDevice, disconnect, 
+        isConnected: () => connected,
+        sendRaw, sendPC, sendCC, sendSysex 
+      };
+    })();
+
+    // ========================================================================
+    // ZOOM PROTOCOL COMMON
+    // ========================================================================
+    const ZoomCommon = (() => {
+      const deviceTable = [
+        { id: 0x58, family: '1on', name: 'G1on', slots: 5, hasExpression: true },
+        { id: 0x5F, family: '1on', name: 'G1Xon', slots: 5, hasExpression: true },
+        { id: 0x71, family: 'MS', name: 'MS-50G', slots: 6, hasExpression: false },
+        { id: 0x6E, family: 'ZxN', name: 'G3n', slots: 7, hasExpression: true },
+        { id: 0x73, family: 'Four', name: 'G1Four', slots: 5, hasExpression: false },
+      ];
+      
+      const state = {
+        deviceId: null,
+        family: null,
+        deviceName: null,
+        currentPatch: 0,
+        editMode: false,
+        identified: false
+      };
+      
+      function init() {
+        Object.assign(state, {
+          deviceId: null, family: null, deviceName: null,
+          currentPatch: 0, editMode: false, identified: false
+        });
+      }
+      
+      function sendIdentityRequest() {
+        // F0 7E 00 06 01 F7
+        MidiHost.sendSysex(new Uint8Array([0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7]));
+        mon_log('MON_ZOOM', 'Identity Request enviado');
+      }
+      
+      function parseIdentityResponse(data) {
+        // Simplificado: simula resposta para teste
+        if (data[0] === 0xF0 && data[1] === 0x7E && data[3] === 0x06) {
+          // Simula G1on para teste
+          state.deviceId = 0x58;
+          state.family = '1on';
+          state.deviceName = 'G1on (simulado)';
+          state.identified = true;
+          mon_log('MON_ZOOM', `Identificado: ${state.deviceName}`);
+          updateInfoPanel();
+          if (typeof on_zoom_identified === 'function') {
+            on_zoom_identified({ 
+              id: state.deviceId, 
+              family: state.family, 
+              name: state.deviceName 
+            });
+          }
+          return true;
+        }
+        return false;
+      }
+      
+      function sendPC(patch) {
+        MidiHost.sendPC(0, patch);
+        state.currentPatch = patch;
+        mon_log('MON_ZOOM', `PC enviado: patch ${patch}`);
+        updateInfoPanel();
+      }
+      
+      function sendTuner(enable) {
+        MidiHost.sendCC(0, 81, enable ? 127 : 0);
+        mon_log('MON_ZOOM', `Tuner: ${enable ? 'ON' : 'OFF'}`);
+      }
+      
+      function sendTapCC() {
+        MidiHost.sendCC(0, 64, 127);
+        mon_log('MON_ZOOM', 'Tap CC enviado');
+      }
+      
+      function dispatchSysex(data) {
+        if (!state.identified) {
+          if (parseIdentityResponse(data)) return;
+        }
+        // Dispatch para família específica (simulado)
+        if (data[4] === 0x28) {
+          mon_log('MON_ZOOM', 'Patch data recebido (simulado)');
+          if (typeof on_1on_patch_received === 'function') {
+            on_1on_patch_received({ valid: true, name: 'CLEAN BOOST', slots: [] });
+          }
+        }
+      }
+      
+      function requestCurrentPatch() {
+        // F0 52 00 [dev] 29 F7
+        const dev = state.deviceId || 0x58;
+        MidiHost.sendSysex(new Uint8Array([0xF0, 0x52, 0x00, dev, 0x29, 0xF7]));
+        mon_log('MON_ZOOM', 'Request patch enviado');
+      }
+      
+      function updateInfoPanel() {
+        document.getElementById('info-connected').textContent = MidiHost.isConnected() ? '✅' : '❌';
+        document.getElementById('info-family').textContent = state.family || '—';
+        document.getElementById('info-patch').textContent = state.currentPatch;
+      }
+      
+      return {
+        init, sendIdentityRequest, parseIdentityResponse, sendPC, sendTuner,
+        sendTapCC, dispatchSysex, requestCurrentPatch,
+        getState: () => ({...state})
+      };
+    })();
+
+    // ========================================================================
+    // MÁQUINA DE ESTADOS PRINCIPAL (main.c emulado)
+    // ========================================================================
+    const FMC = (() => {
+      // Enums
+      const MODE = { NORMAL: 0, BANK: 1, TUNER: 2, TAP_TEMPO: 3 };
+      
+      // Estado global
+      const state = {
+        midiConnected: false,
+        zoomIdentified: false,
+        mode: MODE.NORMAL,
+        currentPatch: 0,
+        currentPage: 0, // 0 = par, 1 = ímpar
+        bankPage: 0,
+        bankPreselect: null,
+        bankAwaitingPreset: false,
+        bpm: 120,
+        tapTimes: new Array(8).fill(0),
+        tapCount: 0,
+        lastTapTime: 0,
+        tunerNote: 'A4',
+        tunerCents: 0,
+        tunerActive: false,
+        displayDirty: true,
+        lastDisplayUpdate: 0,
+        learnActive: false
+      };
+      
+      function init() {
+        Display.init();
+        LedControl.init();
+        Footswitches.init();
+        Monitor.init();
+        ZoomCommon.init();
+        KeyMapper.init(); // Inicializa sistema de teclas
+        
+        // Registrar callbacks
+        Footswitches.setComboCb(on_monitor_combo);
+        
+        // UI events
+        setupUIControls();
+        
+        // Simular conexão inicial para teste
+        setTimeout(() => {
+          state.midiConnected = true;
+          state.zoomIdentified = true;
+          ZoomCommon.getState().identified = true;
+          ZoomCommon.getState().family = '1on';
+          ZoomCommon.getState().deviceName = 'G1on (simulado)';
+          updateHeader();
+          updateInfoPanel();
+          renderDisplay();
+          mon_log('MON_INFO', 'Sistema inicializado (modo simulação)');
+        }, 1000);
+      }
+      
+      function setupUIControls() {
+        document.getElementById('connect-midi').onclick = () => {
+          MidiHost.init().then(() => {
+            // Tenta conectar automaticamente
+            if (!MidiHost.connectToDevice('zoom')) {
+              mon_log('MON_WARN', 'Nenhum dispositivo Zoom encontrado. Selecione manualmente.');
+            }
+          });
+        };
+        
+        document.getElementById('btn-mode').onclick = () => {
+          state.mode = (state.mode + 1) % 4;
+          const names = ['NORMAL', 'BANK', 'TUNER', 'TAP'];
+          document.getElementById('btn-mode').textContent = `Modo: ${names[state.mode]}`;
+          state.displayDirty = true;
+          updateHeader();
+        };
+        
+        document.getElementById('btn-tuner').onclick = () => {
+          state.mode = MODE.TUNER;
+          state.tunerActive = !state.tunerActive;
+          ZoomCommon.sendTuner(state.tunerActive);
+          state.displayDirty = true;
+          updateHeader();
+          mon_log('MON_INFO', `Tuner: ${state.tunerActive ? 'ATIVO' : 'INATIVO'}`);
+        };
+        
+        document.getElementById('btn-tap').onclick = () => {
+          if (state.mode !== MODE.TAP_TEMPO) {
+            state.mode = MODE.TAP_TEMPO;
+            state.tapCount = 0;
+          }
+          tapRegister();
+          state.displayDirty = true;
+          updateHeader();
+        };
+        
+        document.getElementById('btn-bank').onclick = () => {
+          if (state.mode === MODE.BANK) {
+            // Fase 2: selecionar preset
+            if (state.bankPreselect !== null) {
+              const patch = state.bankPreselect * 10 + (state.bankPage === 0 ? 0 : 5);
+              ZoomCommon.sendPC(patch);
+              state.currentPatch = patch;
+              exitBankMode();
+            }
+          } else {
+            enterBankMode();
+          }
+          state.displayDirty = true;
+        };
+        
+        document.getElementById('btn-keys').onclick = () => {
+          KeyMapper.resetToDefault();
+          document.getElementById('btn-keys').textContent = 'Teclas: Reset';
+          setTimeout(() => {
+            document.getElementById('btn-keys').textContent = 'Teclas: Padrão';
+          }, 1000);
+        };
+        
+        document.getElementById('btn-reset').onclick = () => {
+          if (confirm('Resetar estado do sistema?')) {
+            location.reload();
+          }
+        };
+        
+        document.getElementById('btn-monitor').onclick = Monitor.toggle;
+      }
+      
+      function updateHeader() {
+        const modeNames = ['SIM', 'BANK', 'TUNER', 'TAP'];
+        document.getElementById('mode-display').textContent = modeNames[state.mode];
+        document.getElementById('bpm-display').textContent = `${state.bpm}BPM`;
+        document.getElementById('preset-display').textContent = 
+          `${String.fromCharCode(65 + Math.floor(state.currentPatch/10))}${state.currentPatch % 10}`;
+      }
+      
+      function updateInfoPanel() {
+        document.getElementById('info-connected').textContent = state.midiConnected ? '✅' : '❌';
+        document.getElementById('info-family').textContent = ZoomCommon.getState().family || '—';
+        document.getElementById('info-patch').textContent = state.currentPatch;
+        document.getElementById('info-page').textContent = state.currentPage === 0 ? 'Par' : 'Ímpar';
+        document.getElementById('info-bpm').textContent = state.bpm;
+        document.getElementById('info-tap-count').textContent = state.tapCount;
+        document.getElementById('info-tuner').textContent = state.tunerActive ? 'Ativo' : 'Inativo';
+        document.getElementById('info-learn').textContent = state.learnActive ? 'Ativo' : 'Inativo';
+      }
+      
+      // Callbacks de footswitch (override dos fracos)
+      window.on_fs_short_press = function(idx) {
+        // Se estiver em modo captura, ignora eventos normais
+        if (KeyMapper.isCaptureActive()) return;
+        
+        mon_log('MON_INFO', `FS${idx+1} short press (modo: ${Object.keys(MODE)[state.mode]})`);
+        
+        // Prioridade: learn → tuner → tap → bank → normal
+        if (state.learnActive) return; // learn gerencia seus próprios eventos
+        
+        if (state.mode === MODE.TUNER) {
+          state.mode = MODE.NORMAL;
+          state.tunerActive = false;
+          ZoomCommon.sendTuner(false);
+          state.displayDirty = true;
+          updateHeader();
+          return;
+        }
+        
+        if (state.mode === MODE.TAP_TEMPO) {
+          tapRegister();
+          state.displayDirty = true;
+          return;
+        }
+        
+        if (state.mode === MODE.BANK) {
+          if (state.bankAwaitingPreset) {
+            // Fase 2: selecionar preset (1-5)
+            const preset = idx + 1;
+            const patch = state.bankPreselect * 10 + (state.bankPage === 0 ? preset - 1 : preset + 4);
+            ZoomCommon.sendPC(patch);
+            state.currentPatch = patch;
+            exitBankMode();
+          } else {
+            // Fase 1: selecionar banco
+            state.bankPreselect = idx;
+            state.bankAwaitingPreset = true;
+          }
+          state.displayDirty = true;
+          return;
+        }
+        
+        // Modo normal
+        const patch = idx * 2 + state.currentPage;
+        ZoomCommon.sendPC(patch);
+        state.currentPatch = patch;
+        state.currentPage = 1 - state.currentPage; // alterna página
+        state.displayDirty = true;
+        updateHeader();
+        updateLeds();
+      };
+      
+      window.on_fs_hold = function(idx) {
+        // Se estiver em modo captura, ignora hold normal
+        if (KeyMapper.isCaptureActive()) return;
+        
+        mon_log('MON_INFO', `FS${idx+1} hold`);
+        
+        if (state.mode === MODE.BANK && state.bankAwaitingPreset) {
+          // Cancelar seleção pendente
+          state.bankPreselect = null;
+          state.bankAwaitingPreset = false;
+          state.displayDirty = true;
+          return;
+        }
+        
+        switch(idx) {
+          case 2: // FS3
+            if (state.mode === MODE.BANK) {
+              state.bankPage = 1 - state.bankPage;
+              state.displayDirty = true;
+            } else {
+              enterBankMode();
+            }
+            break;
+          case 3: // FS4 → Tuner
+            state.mode = MODE.TUNER;
+            state.tunerActive = true;
+            ZoomCommon.sendTuner(true);
+            state.displayDirty = true;
+            updateHeader();
+            break;
+          case 4: // FS5 → Tap Tempo
+            if (state.mode === MODE.TAP_TEMPO) {
+              state.mode = MODE.NORMAL;
+            } else {
+              state.mode = MODE.TAP_TEMPO;
+              state.tapCount = 0;
+            }
+            state.displayDirty = true;
+            updateHeader();
+            break;
+        }
+      };
+      
+      window.on_fs_release = function(idx) {
+        // Reservado para extensão futura
+      };
+      
+      window.on_monitor_combo = function() {
+        Monitor.toggle();
+      };
+      
+      // Callbacks MIDI
+      window.on_midi_connected = function() {
+        state.midiConnected = true;
+        mon_log('MON_MIDI', 'Dispositivo MIDI conectado');
+        ZoomCommon.sendIdentityRequest();
+        LedControl.led_set_all(true);
+        setTimeout(() => LedControl.led_set_all(false), 200);
+        updateHeader();
+        updateInfoPanel();
+      };
+      
+      window.on_midi_disconnected = function() {
+        state.midiConnected = false;
+        state.zoomIdentified = false;
+        if (state.mode === MODE.TUNER) {
+          state.mode = MODE.NORMAL;
+          state.tunerActive = false;
+        }
+        mon_log('MON_MIDI', 'Dispositivo MIDI desconectado');
+        updateHeader();
+        updateInfoPanel();
+      };
+      
+      window.on_midi_sysex_received = function(data, len) {
+        if (state.learnActive && data[4] === 0x28) {
+          // Delegar para learn
+          if (typeof learn_on_patch_received === 'function') {
+            learn_on_patch_received(data, len);
+          }
+          return;
+        }
+        ZoomCommon.dispatchSysex(data);
+      };
+      
+      window.on_midi_cc_received = function(ch, cc, val) {
+        mon_log('MON_MIDI', `CC ${cc} = ${val} (ch ${ch})`);
+        // Repassar para loop_switches se implementado
+      };
+      
+      window.on_midi_pc_received = function(ch, prog) {
+        state.currentPatch = prog;
+        mon_log('MON_ZOOM', `Sincronizado: patch ${prog}`);
+        state.displayDirty = true;
+        updateHeader();
+        updateLeds();
+        updateInfoPanel();
+      };
+      
+      // Callbacks Zoom
+      window.on_zoom_identified = function(info) {
+        state.zoomIdentified = true;
+        mon_log('MON_ZOOM', `Zoom identificado: ${info.name}`);
+        document.getElementById('effect-display').textContent = info.name;
+        ZoomCommon.requestCurrentPatch();
+        updateInfoPanel();
+      };
+      
+      window.on_1on_patch_received = function(patch) {
+        if (patch.valid) {
+          document.getElementById('effect-display').textContent = patch.name || 'CLEAN BOOST';
+          state.displayDirty = true;
+          mon_log('MON_ZOOM', `Patch recebido: ${patch.name}`);
+        }
+      };
+      
+      // Funções auxiliares
+      function enterBankMode() {
+        state.mode = MODE.BANK;
+        state.bankPreselect = null;
+        state.bankAwaitingPreset = false;
+        mon_log('MON_INFO', 'Modo Bank ativado');
+      }
+      
+      function exitBankMode() {
+        state.mode = MODE.NORMAL;
+        state.bankPreselect = null;
+        state.bankAwaitingPreset = false;
+        mon_log('MON_INFO', 'Modo Bank desativado');
+      }
+      
+      function tapRegister() {
+        const now = HAL.time_ms();
+        if (state.tapCount > 0 && (now - state.lastTapTime) < 200) return; // debounce
+        if (state.tapCount > 0 && (now - state.lastTapTime) > 3000) {
+          state.tapCount = 0; // reset se intervalo muito longo
+        }
+        
+        state.tapTimes[state.tapCount % 8] = now;
+        state.tapCount++;
+        state.lastTapTime = now;
+        
+        if (state.tapCount >= 2) {
+          // Calcular BPM médio
+          let sum = 0, count = 0;
+          for (let i = 1; i < Math.min(state.tapCount, 8); i++) {
+            const diff = state.tapTimes[i] - state.tapTimes[i-1];
+            if (diff >= 200 && diff <= 3000) {
+              sum += 60000 / diff;
+              count++;
+            }
+          }
+          if (count > 0) {
+            state.bpm = Math.round(sum / count);
+            mon_log('MON_INFO', `BPM calculado: ${state.bpm}`);
+            
+            // Injetar no pedal
+            if (state.zoomIdentified) {
+              ZoomCommon.sendTapCC();
+              // Para famílias que suportam injeção de parâmetro, chamar zoom_X_tap_tempo(state.bpm)
+            }
+          }
+        }
+        updateHeader();
+        updateInfoPanel();
+      }
+      
+      function updateLeds() {
+        // Acende LED do footswitch cujo patch inclui o atual
+        const fsIndex = Math.floor(state.currentPatch / 2);
+        for (let i = 0; i < 5; i++) {
+          LedControl.led_set(i, i === fsIndex);
+        }
+      }
+      
+      function renderDisplay() {
+        const now = HAL.time_ms();
+        if (!state.displayDirty && (now - state.lastDisplayUpdate) < 50) return;
+        
+        state.lastDisplayUpdate = now;
+        state.displayDirty = false;
+        
+        if (Monitor.isActive()) {
+          Monitor.task();
+          return;
+        }
+        
+        if (state.learnActive) return; // learn gerencia seu próprio display
+        
+        switch(state.mode) {
+          case MODE.NORMAL:
+            Display.drawNormalMode(
+              state.midiConnected && state.zoomIdentified,
+              state.currentPatch,
+              state.currentPage,
+              ZoomCommon.getState().deviceName
+            );
+            break;
+          case MODE.BANK:
+            Display.drawBankMode(
+              state.bankPage,
+              state.bankPreselect,
+              state.bankAwaitingPreset
+            );
+            break;
+          case MODE.TUNER:
+            Display.drawTuner(
+              state.tunerActive,
+              state.tunerNote,
+              state.tunerCents
+            );
+            break;
+          case MODE.TAP_TEMPO:
+            Display.drawTapTempo(state.bpm, state.tapCount % 4);
+            break;
+        }
+      }
+      
+      // Loop principal
+      function mainLoop() {
+        Footswitches.task();
+        LedControl.task();
+        // learn_task() seria chamado aqui se implementado
+        renderDisplay();
+        
+        // Blink do LED de status (simulado no header)
+        const blinkEl = document.getElementById('cache-indicator');
+        if (!state.midiConnected) {
+          blinkEl.textContent = HAL.time_ms() % 600 < 300 ? '↺' : '  ';
+        } else {
+          blinkEl.textContent = '↺';
+        }
+        
+        requestAnimationFrame(mainLoop);
+      }
+      
+      return { init, mainLoop };
+    })();
+
+    // ========================================================================
+    // INICIALIZAÇÃO
+    // ========================================================================
+    function mon_log(level, msg) {
+      Monitor.log(level, msg);
+    }
+    
+    // Iniciar quando o DOM estiver pronto
+    document.addEventListener('DOMContentLoaded', () => {
+      FMC.init();
+      FMC.mainLoop();
+      mon_log('MON_INFO', 'FMC-AM Web v4.1 inicializado');
+    });
+  </script>
+</body>
+</html>
